@@ -832,6 +832,7 @@ class ClassMetadataInfo implements ClassMetadata
         if ($this->isVersioned) {
             $serialized[] = 'isVersioned';
             $serialized[] = 'versionField';
+            $serialized[] = 'versionIncFlag';
         }
 
         if ($this->lifecycleCallbacks) {
@@ -1288,15 +1289,13 @@ class ClassMetadataInfo implements ClassMetadata
 
         $this->fieldNames[$mapping['columnName']] = $mapping['fieldName'];
 
+        //TODO validate version inc flag
+
         // Complete id mapping
         if (isset($mapping['id']) && $mapping['id'] === true) {
             if ($this->versionField == $mapping['fieldName']) {
                 throw MappingException::cannotVersionIdField($this->name, $mapping['fieldName']);
             }
-            if ($this->versionIncFlag == $mapping['fieldName']) {
-                throw MappingException::cannotVersionFlagIdField($this->name, $mapping['fieldName']);
-            }
-
             if ( ! in_array($mapping['fieldName'], $this->identifier)) {
                 $this->identifier[] = $mapping['fieldName'];
             }
