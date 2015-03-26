@@ -578,6 +578,13 @@ class ClassMetadataInfo implements ClassMetadata
     public $versionField;
 
     /**
+     * READ-ONLY: The name of the field indicates versioning must forcibly be updated (if any).
+     *
+     * @var mixed
+     */
+    public $versionIncFlag;
+
+    /**
      * The ReflectionClass instance of the mapped class.
      *
      * @var ReflectionClass
@@ -1285,6 +1292,9 @@ class ClassMetadataInfo implements ClassMetadata
         if (isset($mapping['id']) && $mapping['id'] === true) {
             if ($this->versionField == $mapping['fieldName']) {
                 throw MappingException::cannotVersionIdField($this->name, $mapping['fieldName']);
+            }
+            if ($this->versionIncFlag == $mapping['fieldName']) {
+                throw MappingException::cannotVersionFlagIdField($this->name, $mapping['fieldName']);
             }
 
             if ( ! in_array($mapping['fieldName'], $this->identifier)) {
@@ -2864,6 +2874,16 @@ class ClassMetadataInfo implements ClassMetadata
     public function setVersionField($versionField)
     {
         $this->versionField = $versionField;
+    }
+
+    /**
+     * If the class is versioned for optimistic locking, set the field which
+     * will be checked to determine if the version must be forcibly updated.
+     *
+     * @param mixed $flagField
+     */
+    public function setVersionIncFlag($flagField) {
+        $this->versionIncFlag = $flagField;
     }
 
     /**
