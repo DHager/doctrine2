@@ -237,11 +237,6 @@ class XmlDriver extends FileDriver
                     unset($mapping['version']);
                 }
 
-                if (isset($mapping['versionIncFlag'])) {
-                    $metadata->setVersionIncFlag($mapping);
-                    unset($mapping['versionIncFlag']);
-                }
-
                 $metadata->mapField($mapping);
             }
         }
@@ -249,9 +244,6 @@ class XmlDriver extends FileDriver
         foreach ($mappings as $mapping) {
             if (isset($mapping['version'])) {
                 $metadata->setVersionMapping($mapping);
-            }
-            if (isset($mapping['versionIncFlag'])) {
-                $metadata->setVersionIncFlag($mapping);
             }
 
             $metadata->mapField($mapping);
