@@ -224,6 +224,16 @@ class XmlDriver extends FileDriver
             $metadata->table['options'] = $this->_parseOptions($xmlRoot->options->children());
         }
 
+        // Special entity PHP-properties which may need monitoring
+        if (isset($xmlRoot->{'special-properties'})){
+            foreach($xmlRoot->{'special-properties'}->{'special-property'} as $sprop){
+                $attr = $sprop->attributes();
+                if($attr->type == "versionIncFlag"){
+                    $metadata->setVersionIncFlag($attr->name);
+                }
+            }
+        }
+
         // The mapping assignment is done in 2 times as a bug might occurs on some php/xml lib versions
         // The internal SimpleXmlIterator get resetted, to this generate a duplicate field exception
         $mappings = array();
