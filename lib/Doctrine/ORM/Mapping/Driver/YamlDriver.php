@@ -307,6 +307,11 @@ class YamlDriver extends FileDriver
                     unset($mapping['version']);
                 }
 
+                if (isset($mapping['versionIncFlag'])) {
+                    $metadata->setVersionIncFlag($mapping);
+                    unset($mapping['versionIncFlag']);
+                }
+
                 $metadata->mapField($mapping);
             }
         }

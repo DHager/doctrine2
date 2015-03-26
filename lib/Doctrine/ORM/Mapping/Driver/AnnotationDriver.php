@@ -279,6 +279,10 @@ class AnnotationDriver extends AbstractAnnotationDriver
                     $metadata->setVersionMapping($mapping);
                 }
 
+                if ($this->reader->getPropertyAnnotation($property, 'Doctrine\ORM\Mapping\VersionIncFlag')) {
+                    $metadata->setVersionIncFlag($mapping);
+                }
+
                 $metadata->mapField($mapping);
 
                 // Check for SequenceGenerator/TableGenerator definition
