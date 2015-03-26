@@ -536,7 +536,11 @@ class UnitOfWork implements PropertyChangedListener
             $this->listenersInvoker->invoke($class, Events::preFlush, $entity, new PreFlushEventArgs($this->em), $invoke);
         }
 
+        $versionBump = false;
         $actualData = array();
+        if($class->isVersioned && isset($class->versionIncFlag) && property_exists($entity,$class->versionIncFlag)){
+            $versionBump = (bool) $entity->{$class->versionIncFlag};
+        }
 
         foreach ($class->reflFields as $name => $refProp) {
             $value = $refProp->getValue($entity);
@@ -571,7 +575,7 @@ class UnitOfWork implements PropertyChangedListener
                 continue;
             }
 
-            if (( ! $class->isIdentifier($name) || ! $class->isIdGeneratorIdentity()) && ($name !== $class->versionField)) {
+            if (( ! $class->isIdentifier($name) || ! $class->isIdGeneratorIdentity()) && (($name !== $class->versionField) && ($name !== $class->versionIncFlag))) {
                 $actualData[$name] = $value;
             }
         }
@@ -674,7 +678,7 @@ class UnitOfWork implements PropertyChangedListener
                 }
             }
 
-            if ($changeSet) {
+            if ($changeSet || $versionBump) {
                 $this->entityChangeSets[$oid]   = $changeSet;
                 $this->originalEntityData[$oid] = $actualData;
                 $this->entityUpdates[$oid]      = $entity;
@@ -904,6 +908,7 @@ class UnitOfWork implements PropertyChangedListener
         foreach ($class->reflFields as $name => $refProp) {
             if (( ! $class->isIdentifier($name) || ! $class->isIdGeneratorIdentity())
                 && ($name !== $class->versionField)
+                && ($name !== $class->versionIncFlag)
                 && ! $class->isCollectionValuedAssociation($name)) {
                 $actualData[$name] = $refProp->getValue($entity);
             }
@@ -1010,7 +1015,7 @@ class UnitOfWork implements PropertyChangedListener
                 $this->recomputeSingleEntityChangeSet($class, $entity);
             }
 
-            if ( ! empty($this->entityChangeSets[$oid])) {
+            if (array_key_exists($oid,$this->entityChangeSets)) {
                 $persister->update($entity);
             }
 

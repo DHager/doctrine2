@@ -356,14 +356,23 @@ class BasicEntityPersister
      */
     public function update($entity)
     {
-        $tableName  = $this->class->getTableName();
-        $updateData = $this->prepareUpdateData($entity);
+        $tableName   = $this->class->getTableName();
+        $updateData  = $this->prepareUpdateData($entity);
+        $isVersioned = $this->class->isVersioned;
 
         if ( ! isset($updateData[$tableName]) || ! ($data = $updateData[$tableName])) {
-            return;
+            if($isVersioned){
+                /*
+                 * There's no real data to update, but we still need to bump up
+                 * the version number/timestamp
+                 */
+                $data = array();
+            }else{
+                return;
+            }
         }
 
-        $isVersioned     = $this->class->isVersioned;
+
         $quotedTableName = $this->quoteStrategy->getTableName($this->class, $this->platform);
 
         $this->updateTable($entity, $quotedTableName, $data, $isVersioned);
