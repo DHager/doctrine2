@@ -45,6 +45,11 @@ class FieldBuilder
     private $version;
 
     /**
+     * @var bool
+     */
+    private $versionIncFlag;
+
+    /**
      * @var string
      */
     private $generatedValue;
@@ -176,6 +181,18 @@ class FieldBuilder
     }
 
     /**
+     * Sets field as one that will be watched, to determine if the entity's
+     * version field must be incremented even in the absence of other changes.
+     *
+     * @return FieldBuilder
+     */
+    public function isVersionIncFlag()
+    {
+        $this->versionIncFlag = true;
+        return $this;
+    }
+
+    /**
      * Sets Sequence Generator.
      *
      * @param string $sequenceName
@@ -222,6 +239,9 @@ class FieldBuilder
         }
         if ($this->version) {
             $cm->setVersionMapping($this->mapping);
+        }
+        if ($this->versionIncFlag) {
+            $cm->setVersionIncFlag($this->mapping);
         }
         $cm->mapField($this->mapping);
         if ($this->sequenceDef) {
