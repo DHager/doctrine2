@@ -287,6 +287,9 @@ class BasicEntityPersister
 
             if ($this->class->isVersioned) {
                 $this->assignDefaultVersionValue($entity, $id);
+                if($this->class->versionIncFlag){
+                    $entity->{$this->class->versionIncFlag} = false;
+                }
             }
         }
 
@@ -467,6 +470,7 @@ class BasicEntityPersister
             $versionField       = $this->class->versionField;
             $versionFieldType   = $this->class->fieldMappings[$versionField]['type'];
             $versionColumn      = $this->quoteStrategy->getColumnName($versionField, $this->class, $this->platform);
+            $versionIncFlag     = $this->class->versionIncFlag;
 
             $where[]    = $versionColumn;
             $types[]    = $this->class->fieldMappings[$versionField]['type'];
@@ -492,6 +496,12 @@ class BasicEntityPersister
         if ($versioned && ! $result) {
             throw OptimisticLockException::lockFailed($entity);
         }
+
+        if($versioned && $versionIncFlag){
+            $entity->{$versionIncFlag} = false;
+        }
+
+
     }
 
     /**
