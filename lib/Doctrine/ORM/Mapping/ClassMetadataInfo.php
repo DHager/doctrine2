@@ -580,7 +580,7 @@ class ClassMetadataInfo implements ClassMetadata
     /**
      * READ-ONLY: The name of the field indicates versioning must forcibly be updated (if any).
      *
-     * @var mixed
+     * @var string|null
      */
     public $versionIncFlag;
 
