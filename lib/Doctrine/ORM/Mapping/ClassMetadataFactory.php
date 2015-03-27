@@ -217,6 +217,16 @@ class ClassMetadataFactory extends AbstractClassMetadataFactory
             // second condition is necessary for mapped superclasses in the middle of an inheritance hierarchy
             throw MappingException::noInheritanceOnMappedSuperClass($class->name);
         }
+
+        if($class->versionIncFlag){
+            if(!$class->isVersioned){
+                throw MappingException::versionIncFlagRequiresVersionField($class->name, $class->versionIncFlag);
+            }
+            /*
+             * TODO how to check that PHP class has the property defined on it?
+             * Can't check normal db-mapped field list, because it isn't one.
+             */
+        }
     }
 
     /**

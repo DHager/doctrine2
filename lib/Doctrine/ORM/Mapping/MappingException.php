@@ -532,6 +532,11 @@ class MappingException extends \Doctrine\ORM\ORMException
         return new self("Setting Id field '$fieldName' as versionable in entity class '$className' is not supported.");
     }
 
+    public static function versionIncFlagRequiresVersionField($classname, $propName)
+    {
+        return new self("Cannot use a flag property of '$propName' since entity class '$className' is not versioned.");
+    }
+
     /**
      * @param string $className
      * @param string $fieldName
