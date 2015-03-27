@@ -535,17 +535,6 @@ class MappingException extends \Doctrine\ORM\ORMException
     /**
      * @param string $className
      * @param string $fieldName
-     *
-     * @return MappingException
-     */
-    public static function cannotVersionFlagIdField($className, $fieldName)
-    {
-        return new self("Setting Id field '$fieldName' as a version-flag in entity class '$className' is not supported.");
-    }
-
-    /**
-     * @param string $className
-     * @param string $fieldName
      * @param string $type
      *
      * @return MappingException
