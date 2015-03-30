@@ -93,6 +93,13 @@ class XmlExporter extends AbstractExporter
             }
         }
 
+        if($metadata->versionIncFlag){
+            $spropXml = $root->addChild("special-properties");
+            $flagItem = $spropXml->addChild("special-property");
+            $flagItem->addAttribute("name", $metadata->versionIncFlag);
+            $flagItem->addAttribute("type","versionIncFlag");
+        }
+
         $trackingPolicy = $this->_getChangeTrackingPolicyString($metadata->changeTrackingPolicy);
 
         if ( $trackingPolicy != 'DEFERRED_IMPLICIT') {
