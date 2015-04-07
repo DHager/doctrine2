@@ -679,7 +679,7 @@ public function __construct()
             if ($token[0] == T_NAMESPACE) {
                 $lastSeenNamespace = "";
                 $inNamespace = true;
-            } elseif ($token[0] == T_CLASS) {
+            } elseif ($token[0] == T_CLASS && $tokens[$i-1][0] != T_DOUBLE_COLON) {
                 $inClass = true;
             } elseif ($token[0] == T_FUNCTION) {
                 if ($tokens[$i+2][0] == T_STRING) {
@@ -701,9 +701,9 @@ public function __construct()
      */
     protected function hasProperty($property, ClassMetadataInfo $metadata)
     {
-        if ($this->extendsClass()) {
+        if ($this->extendsClass() || (!$this->isNew && class_exists($metadata->name))) {
             // don't generate property if its already on the base class.
-            $reflClass = new \ReflectionClass($this->getClassToExtend());
+            $reflClass = new \ReflectionClass($this->getClassToExtend() ?: $metadata->name);
             if ($reflClass->hasProperty($property)) {
                 return true;
             }
@@ -723,9 +723,9 @@ public function __construct()
      */
     protected function hasMethod($method, ClassMetadataInfo $metadata)
     {
-        if ($this->extendsClass()) {
+        if ($this->extendsClass() || (!$this->isNew && class_exists($metadata->name))) {
             // don't generate method if its already on the base class.
-            $reflClass = new \ReflectionClass($this->getClassToExtend());
+            $reflClass = new \ReflectionClass($this->getClassToExtend() ?: $metadata->name);
 
             if ($reflClass->hasMethod($method)) {
                 return true;
@@ -1074,7 +1074,7 @@ public function __construct()
 
             $lines[] = $this->generateFieldMappingPropertyDocBlock($fieldMapping, $metadata);
             $lines[] = $this->spaces . $this->fieldVisibility . ' $' . $fieldMapping['fieldName']
-                     . (isset($fieldMapping['default']) ? ' = ' . var_export($fieldMapping['default'], true) : null) . ";\n";
+                     . (isset($fieldMapping['options']['default']) ? ' = ' . var_export($fieldMapping['options']['default'], true) : null) . ";\n";
         }
 
         return implode("\n", $lines);

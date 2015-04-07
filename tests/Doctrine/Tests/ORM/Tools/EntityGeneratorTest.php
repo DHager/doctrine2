@@ -2,6 +2,7 @@
 
 namespace Doctrine\Tests\ORM\Tools;
 
+use Doctrine\ORM\Mapping\ClassMetadataFactory;
 use Doctrine\ORM\Tools\SchemaTool,
     Doctrine\ORM\Tools\EntityGenerator,
     Doctrine\ORM\Tools\Export\ClassMetadataExporter,
@@ -55,7 +56,7 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $metadata->table['uniqueConstraints']['name_uniq'] = array('columns' => array('name'));
         $metadata->table['indexes']['status_idx'] = array('columns' => array('status'));
         $metadata->mapField(array('fieldName' => 'name', 'type' => 'string'));
-        $metadata->mapField(array('fieldName' => 'status', 'type' => 'string', 'default' => 'published'));
+        $metadata->mapField(array('fieldName' => 'status', 'type' => 'string', 'options' => array('default' => 'published')));
         $metadata->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
         $metadata->mapOneToOne(array('fieldName' => 'author', 'targetEntity' => 'Doctrine\Tests\ORM\Tools\EntityGeneratorAuthor', 'mappedBy' => 'book'));
         $joinColumns = array(
@@ -455,6 +456,97 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
     }
 
     /**
+     * @group DDC-1590
+     */
+    public function testMethodsAndPropertiesAreNotDuplicatedInChildClasses()
+    {
+        $cmf    = new ClassMetadataFactory();
+        $em     = $this->_getTestEntityManager();
+
+        $cmf->setEntityManager($em);
+
+        $ns     = $this->_namespace;
+        $nsdir  = $this->_tmpDir . '/' . $ns;
+
+        $content = str_replace(
+            'namespace Doctrine\Tests\Models\DDC1590',
+            'namespace ' . $ns,
+            file_get_contents(__DIR__ . '/../../Models/DDC1590/DDC1590User.php')
+        );
+
+        $fname = $nsdir . "/DDC1590User.php";
+        file_put_contents($fname, $content);
+        require $fname;
+
+
+        $metadata = $cmf->getMetadataFor($ns . '\DDC1590User');
+        $this->_generator->writeEntityClass($metadata, $this->_tmpDir);
+
+        // class DDC1590User extends DDC1590Entity { ... }
+        $source = file_get_contents($fname);
+
+        // class _DDC1590User extends DDC1590Entity { ... }
+        $source2    = str_replace('class DDC1590User', 'class _DDC1590User', $source);
+        $fname2     = $nsdir . "/_DDC1590User.php";
+        file_put_contents($fname2, $source2);
+        require $fname2;
+
+        // class __DDC1590User { ... }
+        $source3    = str_replace('class DDC1590User extends DDC1590Entity', 'class __DDC1590User', $source);
+        $fname3     = $nsdir . "/__DDC1590User.php";
+        file_put_contents($fname3, $source3);
+        require $fname3;
+
+
+        // class _DDC1590User extends DDC1590Entity { ... }
+        $rc2 = new \ReflectionClass($ns.'\_DDC1590User');
+
+        $this->assertTrue($rc2->hasProperty('name'));
+        $this->assertTrue($rc2->hasProperty('id'));
+        $this->assertTrue($rc2->hasProperty('created_at'));
+
+        $this->assertTrue($rc2->hasMethod('getName'));
+        $this->assertTrue($rc2->hasMethod('setName'));
+        $this->assertTrue($rc2->hasMethod('getId'));
+        $this->assertFalse($rc2->hasMethod('setId'));
+        $this->assertTrue($rc2->hasMethod('getCreatedAt'));
+        $this->assertTrue($rc2->hasMethod('setCreatedAt'));
+
+
+        // class __DDC1590User { ... }
+        $rc3 = new \ReflectionClass($ns.'\__DDC1590User');
+
+        $this->assertTrue($rc3->hasProperty('name'));
+        $this->assertFalse($rc3->hasProperty('id'));
+        $this->assertFalse($rc3->hasProperty('created_at'));
+
+        $this->assertTrue($rc3->hasMethod('getName'));
+        $this->assertTrue($rc3->hasMethod('setName'));
+        $this->assertFalse($rc3->hasMethod('getId'));
+        $this->assertFalse($rc3->hasMethod('setId'));
+        $this->assertFalse($rc3->hasMethod('getCreatedAt'));
+        $this->assertFalse($rc3->hasMethod('setCreatedAt'));
+    }
+
+    public function testRegenerateEntityClass()
+    {
+        $metadata = $this->generateBookEntityFixture();
+        $this->loadEntityClass($metadata);
+
+        $className = basename(str_replace('\\', '/', $metadata->name));
+        $path = $this->_tmpDir . '/' . $this->_namespace . '/' . $className . '.php';
+        $classTest = file_get_contents($path);
+
+        $this->_generator->setRegenerateEntityIfExists(true);
+        $this->_generator->setBackupExisting(false);
+
+        $this->_generator->writeEntityClass($metadata, $this->_tmpDir);
+        $classNew = file_get_contents($path);
+
+        $this->assertSame($classTest,$classNew);
+    }
+
+    /**
      * @return array
      */
     public function getEntityTypeAliasDataProvider()
@@ -552,7 +644,30 @@ class
      ',
                 array('Foo\Bar\Baz'),
             ),
+            array(
+                '
+<?php namespace Foo\Bar; class Baz {
+    public static function someMethod(){
+        return self::class;
+    }
+}
+',
+                array('Foo\Bar\Baz'),
+            ),
         );
+    }
+
+    /**
+     * @param ClassMetadataInfo $metadata
+     */
+    private function loadEntityClass(ClassMetadataInfo $metadata)
+    {
+        $className = basename(str_replace('\\', '/', $metadata->name));
+        $path      = $this->_tmpDir . '/' . $this->_namespace . '/' . $className . '.php';
+
+        $this->assertFileExists($path);
+
+        require_once $path;
     }
 
     /**

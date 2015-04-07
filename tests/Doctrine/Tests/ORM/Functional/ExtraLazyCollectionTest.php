@@ -3,6 +3,9 @@
 namespace Doctrine\Tests\ORM\Functional;
 
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Doctrine\Tests\Models\Tweet\Tweet;
+use Doctrine\Tests\Models\Tweet\User;
+use Doctrine\Tests\Models\Tweet\UserList;
 
 require_once __DIR__ . '/../../TestInit.php';
 
@@ -22,7 +25,10 @@ class ExtraLazyCollectionTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
     public function setUp()
     {
+        $this->useModelSet('tweet');
         $this->useModelSet('cms');
+        $this->useModelSet('tweet');
+
         parent::setUp();
 
         $class = $this->_em->getClassMetadata('Doctrine\Tests\Models\CMS\CmsUser');
@@ -363,7 +369,7 @@ class ExtraLazyCollectionTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $user->articles->removeElement($article);
 
         $this->assertFalse($user->articles->isInitialized(), "Post-Condition: Collection is not initialized.");
-        $this->assertEquals($queryCount + 1, $this->getCurrentQueryCount());
+        $this->assertEquals($queryCount, $this->getCurrentQueryCount());
 
         // Test One to Many removal with Entity state as new
         $article = new \Doctrine\Tests\Models\CMS\CmsArticle();
@@ -384,7 +390,7 @@ class ExtraLazyCollectionTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
         $user->articles->removeElement($article);
 
-        $this->assertEquals($queryCount + 1, $this->getCurrentQueryCount(), "Removing a persisted entity should cause one query to be executed.");
+        $this->assertEquals($queryCount, $this->getCurrentQueryCount(), "Removing a persisted entity should cause one query to be executed.");
         $this->assertFalse($user->articles->isInitialized(), "Post-Condition: Collection is not initialized.");
 
         // Test One to Many removal with Entity state as managed
@@ -649,5 +655,205 @@ class ExtraLazyCollectionTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
         $this->topic = $article1->topic;
         $this->phonenumber = $phonenumber1->phonenumber;
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemoveManagedElementFromOneToManyExtraLazyCollectionIsNoOp()
+    {
+        list($userId, $tweetId) = $this->loadTweetFixture();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $user->tweets->removeElement($this->_em->find(Tweet::CLASSNAME, $tweetId));
+
+        $this->_em->clear();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $this->assertCount(1, $user->tweets, 'Element was not removed - need to update the owning side first');
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemoveManagedElementFromOneToManyExtraLazyCollectionWithoutDeletingTheTargetEntityEntryIsNoOp()
+    {
+        list($userId, $tweetId) = $this->loadTweetFixture();
+
+        /* @var $user User */
+        $user  = $this->_em->find(User::CLASSNAME, $userId);
+        $tweet = $this->_em->find(Tweet::CLASSNAME, $tweetId);
+
+        $user->tweets->removeElement($tweet);
+
+        $this->_em->clear();
+
+        /* @var $tweet Tweet */
+        $tweet = $this->_em->find(Tweet::CLASSNAME, $tweetId);
+        $this->assertInstanceOf(
+            Tweet::CLASSNAME,
+            $tweet,
+            'Even though the collection is extra lazy, the tweet should not have been deleted'
+        );
+
+        $this->assertInstanceOf(
+            User::CLASSNAME,
+            $tweet->author,
+            'Tweet author link has not been removed - need to update the owning side first'
+        );
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemovingManagedLazyProxyFromExtraLazyOneToManyDoesRemoveTheAssociationButNotTheEntity()
+    {
+        list($userId, $tweetId) = $this->loadTweetFixture();
+
+        /* @var $user User */
+        $user  = $this->_em->find(User::CLASSNAME, $userId);
+        $tweet = $this->_em->getReference(Tweet::CLASSNAME, $tweetId);
+
+        $user->tweets->removeElement($this->_em->getReference(Tweet::CLASSNAME, $tweetId));
+
+        $this->_em->clear();
+
+        /* @var $tweet Tweet */
+        $tweet = $this->_em->find(Tweet::CLASSNAME, $tweet->id);
+        $this->assertInstanceOf(
+            Tweet::CLASSNAME,
+            $tweet,
+            'Even though the collection is extra lazy, the tweet should not have been deleted'
+        );
+
+        $this->assertInstanceOf(User::CLASSNAME, $tweet->author);
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $this->assertCount(1, $user->tweets, 'Element was not removed - need to update the owning side first');
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemoveOrphanedManagedElementFromOneToManyExtraLazyCollection()
+    {
+        list($userId, $userListId) = $this->loadUserListFixture();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $user->userLists->removeElement($this->_em->find(UserList::CLASSNAME, $userListId));
+
+        $this->_em->clear();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $this->assertCount(0, $user->userLists, 'Element was removed from association due to orphan removal');
+        $this->assertNull(
+            $this->_em->find(UserList::CLASSNAME, $userListId),
+            'Element was deleted due to orphan removal'
+        );
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemoveOrphanedUnManagedElementFromOneToManyExtraLazyCollection()
+    {
+        list($userId, $userListId) = $this->loadUserListFixture();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $user->userLists->removeElement(new UserList());
+
+        $this->_em->clear();
+
+        /* @var $userList UserList */
+        $userList = $this->_em->find(UserList::CLASSNAME, $userListId);
+        $this->assertInstanceOf(
+            UserList::CLASSNAME,
+            $userList,
+            'Even though the collection is extra lazy + orphan removal, the user list should not have been deleted'
+        );
+
+        $this->assertInstanceOf(
+            User::CLASSNAME,
+            $userList->owner,
+            'User list to owner link has not been removed'
+        );
+    }
+
+    /**
+     * @group DDC-3343
+     */
+    public function testRemoveOrphanedManagedLazyProxyFromExtraLazyOneToMany()
+    {
+        list($userId, $userListId) = $this->loadUserListFixture();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $user->userLists->removeElement($this->_em->getReference(UserList::CLASSNAME, $userListId));
+
+        $this->_em->clear();
+
+        /* @var $user User */
+        $user = $this->_em->find(User::CLASSNAME, $userId);
+
+        $this->assertCount(0, $user->userLists, 'Element was removed from association due to orphan removal');
+        $this->assertNull(
+            $this->_em->find(UserList::CLASSNAME, $userListId),
+            'Element was deleted due to orphan removal'
+        );
+    }
+
+    /**
+     * @return int[] ordered tuple: user id and tweet id
+     */
+    private function loadTweetFixture()
+    {
+        $user  = new User();
+        $tweet = new Tweet();
+
+        $user->name     = 'ocramius';
+        $tweet->content = 'The cat is on the table';
+
+        $user->addTweet($tweet);
+
+        $this->_em->persist($user);
+        $this->_em->persist($tweet);
+        $this->_em->flush();
+        $this->_em->clear();
+
+        return array($user->id, $tweet->id);
+    }
+
+    /**
+     * @return int[] ordered tuple: user id and user list id
+     */
+    private function loadUserListFixture()
+    {
+        $user     = new User();
+        $userList = new UserList();
+
+        $user->name     = 'ocramius';
+        $userList->listName = 'PHP Developers to follow closely';
+
+        $user->addUserList($userList);
+
+        $this->_em->persist($user);
+        $this->_em->persist($userList);
+        $this->_em->flush();
+        $this->_em->clear();
+
+        return array($user->id, $userList->id);
     }
 }

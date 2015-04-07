@@ -139,6 +139,10 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             'Doctrine\Tests\Models\StockExchange\Stock',
             'Doctrine\Tests\Models\StockExchange\Market',
         ),
+        'tweet' => array(
+            'Doctrine\Tests\Models\Tweet\Tweet',
+            'Doctrine\Tests\Models\Tweet\User',
+        ),
         'legacy' => array(
             'Doctrine\Tests\Models\Legacy\LegacyUser',
             'Doctrine\Tests\Models\Legacy\LegacyUserReference',
@@ -161,6 +165,11 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             'Doctrine\Tests\Models\Taxi\Ride',
             'Doctrine\Tests\Models\Taxi\Car',
             'Doctrine\Tests\Models\Taxi\Driver',
+        ),
+        'tweet' => array(
+            'Doctrine\Tests\Models\Tweet\User',
+            'Doctrine\Tests\Models\Tweet\Tweet',
+            'Doctrine\Tests\Models\Tweet\UserList',
         ),
     );
 
@@ -269,6 +278,11 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM exchange_stocks');
             $conn->executeUpdate('DELETE FROM exchange_markets');
         }
+        if (isset($this->_usedModelSets['tweet'])) {
+            $conn->executeUpdate('DELETE FROM tweet_tweet');
+            $conn->executeUpdate('DELETE FROM tweet_user_list');
+            $conn->executeUpdate('DELETE FROM tweet_user');
+        }
         if (isset($this->_usedModelSets['legacy'])) {
             $conn->executeUpdate('DELETE FROM legacy_users_cars');
             $conn->executeUpdate('DELETE FROM legacy_users_reference');
@@ -295,6 +309,12 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM taxi_ride');
             $conn->executeUpdate('DELETE FROM taxi_car');
             $conn->executeUpdate('DELETE FROM taxi_driver');
+        }
+
+        if (isset($this->_usedModelSets['tweet'])) {
+            $conn->executeUpdate('DELETE FROM tweet_tweet');
+            $conn->executeUpdate('DELETE FROM tweet_user_list');
+            $conn->executeUpdate('DELETE FROM tweet_user');
         }
 
         $this->_em->clear();
